@@ -127,7 +127,7 @@ class EHub:
     CAN_ID_EXT  = 1
     CAN_ID_STD_MAX  = 0x7FF
     CAN_ID_EXT_MAX  = 0x1FFFFFFF
-    def send_can_frame(self, id, data):
+    def send_can_frame(self, id, ext, data):
         """
         typedef struct {
             uint32_t    id;
@@ -138,12 +138,12 @@ class EHub:
         } SendCanFrame;
         """
         dev = self.CAN_DEV_0
-        ext = self.CAN_ID_EXT
+        #ext = self.CAN_ID_EXT
         if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
             self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
             print "Invalid CAN ID " + str(id)
 
-        usb_msg =  self.pack_usb_msg(self.CAN0_DATA)
+        usb_msg =  self.pack_usb_msg(self.CMD_SEND_CAN_FRAME)
         data_len = len(data)
 
         bitfiels = dev | ext << 1 | data_len << 2;
@@ -165,6 +165,13 @@ class EHub:
         self.ehub_fd.write(usb_msg)
         self.ehub_fd.flush()
 
+    def recv_usb_frame_head(self):
+
+        recvbit = self.ehub_fd.read(4)
+        cmd, idx, datalen = struct.unpack("BBH", recvbit[0:4])
+        print "cmd = 0x%x, dev = 0x%x, size = %d\n" % (cmd, idx, datalen)
+        return datalen
+
     def recv_can_frame(self, datalen):
         data = [1,2,3,4,5,6,7,8];
         canid = 0
@@ -177,19 +184,45 @@ class EHub:
         for i in range(recvlen):
             print "0x%x" % struct.unpack("B", recvbit[i:i+1])
 
-        cmd, idx, datalen = struct.unpack("BBH", recvbit[0:4])
-        print "cmd = 0x%x, dev = %d, size = %d\n" % (cmd, idx, datalen)
+        std_id, ext_id = struct.unpack("II", recvbit[0:8])
+        print "std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id)
 
-        canid, bitfiels = struct.unpack("IB", recvbit[4:9])
-        print "candid = 0x%x, len = 0x%x" % (canid, bitfiels)
+        IDE, RTR, DLC = struct.unpack("BBB", recvbit[8:11])
+        print "IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC)
 
         for i in range(8):
-            a=i+9
-            b=i+10
+            a=i+11
+            b=i+12
             data[i] = struct.unpack("B", recvbit[a:b])
             print a, b, "0x%x" % data[i]
 
 
+    def send_cmd_to_ehub(self, cmd):
+        """
+        typedef struct {
+            uint32_t    id;
+            uint8_t     dev:1;
+            uint8_t     ext:1;
+            uint8_t     len:6;
+            uint8_t     data[8];
+        } SendCanFrame;
+        """
 
+        data = [1,2,3,4,5,6,7,8];
+        id = 0x11223344
+        dev = self.CAN_DEV_0
+        ext = self.CAN_ID_EXT
+        if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
+            self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
+            print "Invalid CAN ID " + str(id)
+
+        usb_msg =  self.pack_usb_msg(cmd)
+        data_len = len(data)
+
+        bitfiels = dev | ext << 1 | data_len << 2;
+        usb_msg += struct.pack("IB", id, bitfiels)
+        for i in range(data_len):
+            usb_msg += struct.pack("B", data[i]);
+        self.write(usb_msg)
 
 
