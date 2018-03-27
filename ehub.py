@@ -127,7 +127,7 @@ class EHub:
     CAN_ID_EXT  = 1
     CAN_ID_STD_MAX  = 0x7FF
     CAN_ID_EXT_MAX  = 0x1FFFFFFF
-    def send_can_frame(self, id, ext, data):
+    def send_can_frame(self, id, data):
         """
         typedef struct {
             uint32_t    id;
@@ -138,18 +138,22 @@ class EHub:
         } SendCanFrame;
         """
         dev = self.CAN_DEV_0
-        #ext = self.CAN_ID_EXT
+        ext = self.CAN_ID_EXT
+        datalen = 8
+        canlen = 13
         if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
             self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
             print "Invalid CAN ID " + str(id)
 
-        usb_msg =  self.pack_usb_msg(self.CMD_SEND_CAN_FRAME)
-        data_len = len(data)
+        #pack usb header
+        usb_msg = struct.pack("BBH", self.CMD_SEND_CAN_FRAME, 0, canlen)
 
-        bitfiels = dev | ext << 1 | data_len << 2;
+        bitfiels = dev | ext << 1 | datalen << 2;
         usb_msg += struct.pack("IB", id, bitfiels)
-        for i in range(data_len):
+
+        for i in range(8):
             usb_msg += struct.pack("B", data[i]);
+
         self.write(usb_msg)
 
     def write(self, usb_msg):
@@ -165,34 +169,34 @@ class EHub:
         self.ehub_fd.write(usb_msg)
         self.ehub_fd.flush()
 
-    def recv_usb_frame_head(self):
-
-        recvbit = self.ehub_fd.read(4)
-        cmd, idx, datalen = struct.unpack("BBH", recvbit[0:4])
-        print "cmd = 0x%x, dev = 0x%x, size = %d\n" % (cmd, idx, datalen)
-        return datalen
-
-    def recv_can_frame(self, datalen):
+    def recv_can_frame(self):
         data = [1,2,3,4,5,6,7,8];
         canid = 0
         bitfiels = 0
 
-        recvbit = self.ehub_fd.read(datalen)
+        UsbDataLen = 64
+        offset = 0
+        recvbit = self.ehub_fd.read(UsbDataLen)
         recvlen = len(recvbit)
         print recvlen
 
-        for i in range(recvlen):
-            print "0x%x" % struct.unpack("B", recvbit[i:i+1])
+        #for i in range(recvlen):
+        #    print "0x%x" % struct.unpack("B", recvbit[i:i+1])
 
-        std_id, ext_id = struct.unpack("II", recvbit[0:8])
+        cmd, idx, datalen = struct.unpack("BBH", recvbit[0 : 4])
+        offset += 4
+
+        std_id, ext_id = struct.unpack("II", recvbit[offset : offset+8])
         print "std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id)
+        offset += 8
 
-        IDE, RTR, DLC = struct.unpack("BBB", recvbit[8:11])
+        IDE, RTR, DLC = struct.unpack("BBB", recvbit[offset : offset+3])
         print "IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC)
+        offset += 3
 
         for i in range(8):
-            a=i+11
-            b=i+12
+            a=i+offset
+            b=i+offset+1
             data[i] = struct.unpack("B", recvbit[a:b])
             print a, b, "0x%x" % data[i]
 
