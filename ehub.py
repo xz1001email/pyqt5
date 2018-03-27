@@ -29,7 +29,7 @@ class EHub:
             sys.exit(1)
 
         try:
-            self.ehub_fd = open(hidrawx, "wb")
+            self.ehub_fd = open(hidrawx, "rb+")
         except IOError:
             print "open " + hidrawx + \
                 " failed, make sure file exist and write permission allowed"
@@ -39,6 +39,9 @@ class EHub:
     USB_MESG_DATA_SIZE	= 60
     CMD_CONFIG_CAN      = 0x80
     CMD_SEND_CAN_FRAME  = 0x81
+    CMD_START_CAPTURE  = 0x55
+    CMD_STOP_CAPTURE  = 0x66
+    CAN0_DATA = 0x11
     def pack_usb_msg(self, cmd):
         """
         typedef struct
@@ -50,6 +53,10 @@ class EHub:
         }USB_MESSAGE;
         """
         return struct.pack("BBH", cmd, 0, 0)
+
+    def unpack_usb_msg(self, msg):
+        head = struct.unpack("BBH", msg)
+        print head
 
     BAUDRATE_NAMES = (
         "CAN_SPEED_INVALID",
@@ -120,7 +127,7 @@ class EHub:
     CAN_ID_EXT  = 1
     CAN_ID_STD_MAX  = 0x7FF
     CAN_ID_EXT_MAX  = 0x1FFFFFFF
-    def send_can_frame(self, id, dev, ext, data):
+    def send_can_frame(self, id, data):
         """
         typedef struct {
             uint32_t    id;
@@ -130,11 +137,13 @@ class EHub:
             uint8_t     data[8];
         } SendCanFrame;
         """
+        dev = self.CAN_DEV_0
+        ext = self.CAN_ID_EXT
         if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
             self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
             print "Invalid CAN ID " + str(id)
 
-        usb_msg =  self.pack_usb_msg(self.CMD_SEND_CAN_FRAME)
+        usb_msg =  self.pack_usb_msg(self.CAN0_DATA)
         data_len = len(data)
 
         bitfiels = dev | ext << 1 | data_len << 2;
@@ -156,14 +165,31 @@ class EHub:
         self.ehub_fd.write(usb_msg)
         self.ehub_fd.flush()
 
+    def recv_can_frame(self, datalen):
+        data = [1,2,3,4,5,6,7,8];
+        canid = 0
+        bitfiels = 0
+
+        recvbit = self.ehub_fd.read(datalen)
+        recvlen = len(recvbit)
+        print recvlen
+
+        for i in range(recvlen):
+            print "0x%x" % struct.unpack("B", recvbit[i:i+1])
+
+        cmd, idx, datalen = struct.unpack("BBH", recvbit[0:4])
+        print "cmd = 0x%x, dev = %d, size = %d\n" % (cmd, idx, datalen)
+
+        canid, bitfiels = struct.unpack("IB", recvbit[4:9])
+        print "candid = 0x%x, len = 0x%x" % (canid, bitfiels)
+
+        for i in range(8):
+            a=i+9
+            b=i+10
+            data[i] = struct.unpack("B", recvbit[a:b])
+            print a, b, "0x%x" % data[i]
 
 
-    def recv_can_frame(self, id, dev, ext, data):
-        usb_msg =  self.pack_usb_msg(self.CMD_SEND_CAN_FRAME)
-        self.read(100)
 
-
-    def read(self, msglen):
-        msg_buf = self.ehub_fd.read(msglen)
 
 
