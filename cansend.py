@@ -8,6 +8,31 @@ import getopt
 import _thread
 import time
 
+
+class Ectrl:
+    ehub = None
+    def __init__(self):
+        ehub = EHub()
+
+    def recv_can_frame_cnt(self):
+        count = 0
+        ehub.recv_can_frame()
+        count += 1
+        return count
+
+    def send_can_frame(self):
+        SendCanID = 0x10F00718
+        data = [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8]
+        ehub.send_can_frame(SendCanID, data)
+        return 0
+
+
+
+
+
+
+
+'''
 def pthread_can_send( threadName, delay ):
     count = 0
     ehub = EHub()
@@ -61,3 +86,7 @@ except:
 while 1:
     #print ("end")
     pass
+
+'''
+
+
