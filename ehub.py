@@ -16,25 +16,25 @@ class EHub:
         sys_hidraw = "/sys/class/hidraw/hidraw"
         for x in range(4):
             if os.path.islink(sys_hidraw + str(x) + "/device"):
-                #print "Test " + sys_hidraw + str(x)
+                #print( "Test " + sys_hidraw + str(x))
                 if EHUB_USB_VID in os.readlink(sys_hidraw + str(x) + "/device"):
                     hidrawx = "/dev/hidraw" + str(x)
                     break;
 
         if 0 == len(hidrawx):
-            print "EHub hidraw device file not found, make sure it's connected"
+            print ("EHub hidraw device file not found, make sure it's connected")
             sys.exit(1)
         if not os.path.exists(hidrawx):
-            print "Hidraw device " + hidrawx + " not exist"
+            print ("Hidraw device " + hidrawx + " not exist")
             sys.exit(1)
 
         try:
             self.ehub_fd = open(hidrawx, "rb+")
         except IOError:
-            print "open " + hidrawx + \
-                " failed, make sure file exist and write permission allowed"
+            print ("open " + hidrawx + \
+                " failed, make sure file exist and write permission allowed")
             sys.exit(1)
-        print "init EHub from " + hidrawx
+        print ("init EHub from " + hidrawx)
 
     USB_MESG_DATA_SIZE	= 60
     CMD_CONFIG_CAN      = 0x80
@@ -56,7 +56,7 @@ class EHub:
 
     def unpack_usb_msg(self, msg):
         head = struct.unpack("BBH", msg)
-        print head
+        print (head)
 
     BAUDRATE_NAMES = (
         "CAN_SPEED_INVALID",
@@ -143,7 +143,7 @@ class EHub:
         canlen = 13
         if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
             self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
-            print "Invalid CAN ID " + str(id)
+            print ("Invalid CAN ID " + str(id))
 
         #pack usb header
         usb_msg = struct.pack("BBH", self.CMD_SEND_CAN_FRAME, 0, canlen)
@@ -178,27 +178,27 @@ class EHub:
         offset = 0
         recvbit = self.ehub_fd.read(UsbDataLen)
         recvlen = len(recvbit)
-        print recvlen
+        print (recvlen)
 
         #for i in range(recvlen):
-        #    print "0x%x" % struct.unpack("B", recvbit[i:i+1])
+        #    print ("0x%x" % struct.unpack("B", recvbit[i:i+1]))
 
         cmd, idx, datalen = struct.unpack("BBH", recvbit[0 : 4])
         offset += 4
 
         std_id, ext_id = struct.unpack("II", recvbit[offset : offset+8])
-        print "std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id)
+        print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
         offset += 8
 
         IDE, RTR, DLC = struct.unpack("BBB", recvbit[offset : offset+3])
-        print "IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC)
+        print ("IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC))
         offset += 3
 
         for i in range(8):
             a=i+offset
             b=i+offset+1
             data[i] = struct.unpack("B", recvbit[a:b])
-            print a, b, "0x%x" % data[i]
+            print (a, b, "0x%x" % data[i])
 
 
     def send_cmd_to_ehub(self, cmd):
@@ -218,7 +218,7 @@ class EHub:
         ext = self.CAN_ID_EXT
         if self.CAN_ID_STD == ext and id > self.CAN_ID_STD_MAX or\
             self.CAN_ID_EXT == ext and id > self.CAN_ID_EXT_MAX:
-            print "Invalid CAN ID " + str(id)
+            print ("Invalid CAN ID " + str(id))
 
         usb_msg =  self.pack_usb_msg(cmd)
         data_len = len(data)
