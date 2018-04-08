@@ -178,7 +178,7 @@ class EHub:
         offset = 0
         recvbit = self.ehub_fd.read(UsbDataLen)
         recvlen = len(recvbit)
-        print (recvlen)
+        #print (recvlen)
 
         #for i in range(recvlen):
         #    print ("0x%x" % struct.unpack("B", recvbit[i:i+1]))
@@ -187,18 +187,18 @@ class EHub:
         offset += 4
 
         std_id, ext_id = struct.unpack("II", recvbit[offset : offset+8])
-        print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
+        #print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
         offset += 8
 
         IDE, RTR, DLC = struct.unpack("BBB", recvbit[offset : offset+3])
-        print ("IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC))
+        #print ("IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC))
         offset += 3
 
         for i in range(8):
             a=i+offset
             b=i+offset+1
             data[i] = struct.unpack("B", recvbit[a:b])
-            print (a, b, "0x%x" % data[i])
+            #print (a, b, "0x%x" % data[i])
 
         return ext_id, data
 
