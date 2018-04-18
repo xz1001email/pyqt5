@@ -200,7 +200,7 @@ class EHub:
             data[i] = struct.unpack("B", recvbit[a:b])
             #print (a, b, "0x%x" % data[i])
 
-        return ext_id, data
+        return std_id, ext_id, data
 
 
     def send_cmd_to_ehub(self, cmd):

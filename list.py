@@ -20,22 +20,17 @@ from PyQt5.QtCore import QTimer
 #from cansend import Ectrl
 from ehub import EHub
 
-can_data = {0,0,0,0,0,0}
-ext_id = 0
-
-global s_id_str
-global s_data_str
-s_data_str = ''
-s_id_str = ''
-
-ehub = None
+CanSendStr = ''
+CanRecvStr = ''
+CanRecvId = ''
+CanSendId = ''
+sendcnt = 0
+recvcnt = 0
 class TableSheet(QWidget):
-    sendcnt = 0
-    recvcnt = 0
-    sendval = 0
     def __init__(self):
         super().__init__()
         self.initUi()
+        self.count_start()
 
     def initUi(self):
         horizontalHeader = ["设备","ID","方向","幀计数","内容"]
@@ -109,118 +104,95 @@ class TableSheet(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def _send_can_frame(self):
-        SendCanID = 0x10F00718
-        data = [0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18]
-
-        self.sendval +=1
-        for i in range(8):
-            data[7-i] = (self.sendval >> 8*i) & 0xFF
-
-        data_str = ''
-        id_str = ''
-        id_str += ("0x%X" % (SendCanID))
-        for i in range(len(data)):
-            #print ("send data = %d" % ( data[i]))
-            data_str += ("0x%02X, " % ( data[i]))
-
-        ehub.send_can_frame(SendCanID, data)
-        self.sendcnt += 1
-        self.table.setItem(0,1,QTableWidgetItem(id_str))
-        self.table.setItem(0,3,QTableWidgetItem(str(self.sendcnt)))
-        self.table.setItem(0,4,QTableWidgetItem(data_str))
-
-    def _recv_can_frame(self):
-        ext_id, data = ehub.recv_can_frame()
-        print (" id = 0x%X" % ext_id)
-
-        data_str = ''
-        id_str = ''
-        id_str += ("0x%X" % (ext_id))
-        for i in range(len(data)):
-            #print ("data recv = 0x%x" % ( data[i]))
-            #data_str += str(data[i])
-            data_str += ("0x%X, " % ( data[i]))
-
-        self.recvcnt += 1
-        self.table.setItem(1,1,QTableWidgetItem(id_str))
-        self.table.setItem(1,3,QTableWidgetItem(str(self.recvcnt)))
-        self.table.setItem(1,4,QTableWidgetItem(data_str))
+    def update_send_buf(self):
+        self.table.setItem(0,1,QTableWidgetItem(CanSendId))
+        self.table.setItem(0,3,QTableWidgetItem(str(sendcnt)))
+        self.table.setItem(0,4,QTableWidgetItem(CanSendStr))
     def update_recv_buf(self):
-        global s_id_str
-        global s_data_str
-
-        self.recvcnt += 1
-        self.table.setItem(1,1,QTableWidgetItem(s_id_str))
-        self.table.setItem(1,3,QTableWidgetItem(str(self.recvcnt)))
-        self.table.setItem(1,4,QTableWidgetItem(s_data_str))
+        self.table.setItem(1,1,QTableWidgetItem(CanRecvId))
+        self.table.setItem(1,3,QTableWidgetItem(str(recvcnt)))
+        self.table.setItem(1,4,QTableWidgetItem(CanRecvStr))
 
     def count_start(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.operate)
-        #self.timer.start(1000)
         self.timer.start(20)
 
-
     def operate(self):
-        #ehub.recv_can_frame()
-        self._send_can_frame()
-        #self._recv_can_frame()
+        self.update_send_buf()
+        self.update_recv_buf()
 
+class Candata():
+    def __init__(self):
+        self.ehub = EHub()
+        self.sendval = 0
+        print ("candata enter")
 
-def mesg_recv(name, fd):
-    while 1:
-        print (name)
-        ext_id, data = fd.recv_can_frame()
-        print (" id = 0x%X" % ext_id)
+    def send_can_msg(self):
+        global sendcnt
+        global CanSendId
+        global CanSendStr
 
-        data_str += ''
-        id_str += ''
-        id_str += ("0x%X" % (ext_id))
+        SendCanID = 0x10F00718
+        data = [0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18]
+        self.sendval +=1
+        for i in range(8):
+            data[7-i] = (self.sendval >> 8*i) & 0xFF
+        CanSendStr= ''
+        CanSendId = ''
+        CanSendId += ("0x%X" % (SendCanID))
         for i in range(len(data)):
-            #print ("data recv = 0x%x" % ( data[i]))
-            #data_str += str(data[i])
-            data_str += ("0x%X, " % ( data[i]))
-
-
+            #print ("send data = %d" % ( data[i]))
+            CanSendStr += ("0x%02X, " % ( data[i]))
+        self.ehub.send_can_frame(SendCanID, data)
+        sendcnt += 1
+    def recv_can_msg(self):
+        global recvcnt
+        global CanRecvStr
+        global CanRecvId
+        #print ("recv")
+        std_id, ext_id, data = self.ehub.recv_can_frame()
+        #print (" id = 0x%X" % ext_id)
+        CanRecvId = ''
+        if std_id != 0:
+            CanRecvId += ("0x%X" % (std_id))
+        else:
+            CanRecvId += ("0x%X" % (ext_id))
+        CanRecvStr = ''
+        for i in range(len(data)):
+            #print ("recv data = 0x%X" % ( data[i]))
+            CanRecvStr += ("0x%02X, " % ( data[i]))
+        recvcnt += 1
 
 class WorkThread(QThread):
     trigger = pyqtSignal()
+    can = Candata()
     def __int__(self):
         super(WorkThread,self).__init__()
-
     def run(self):
-        global s_id_str
-        global s_data_str
         while 1:
-            #table._recv_can_frame()
-            #print ("recv")
-            ext_id, data = ehub.recv_can_frame()
-            #print (" id = 0x%X" % ext_id)
+            self.can.recv_can_msg()
+            #self.trigger.emit()         #循环完毕后发出信号
 
-            s_id_str = ''
-            s_id_str += ("0x%X" % (ext_id))
-            s_data_str = ''
-            for i in range(len(data)):
-                #print ("recv data = 0x%X" % ( data[i]))
-                s_data_str += ("0x%02X, " % ( data[i]))
+    def timer_start(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.operate)
+        self.timer.start(100)
 
-            self.trigger.emit()         #循环完毕后发出信号
-
+    def operate(self):
+        self.can.send_can_msg()
 
 if __name__ == '__main__':
 
-
     app = QApplication(sys.argv)
     table = TableSheet()
-    table.count_start()
-    #table._recv_can_frame()
-    #_thread.start_new_thread( mesg_recv, ("Thread-1", ehub))
 
-    ehub = EHub()
     workThread=WorkThread()
-    workThread.trigger.connect(table.update_recv_buf)
+    #workThread.trigger.connect(table.update_recv_buf)
     workThread.start()              #计时开始
+    workThread.timer_start()
     table.show()
     sys.exit(app.exec_())
+
+
 
