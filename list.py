@@ -3,7 +3,7 @@
 TableWidget
 '''
 __author__ = 'Tony Zhu'
-import sys
+import sys, os
 import time
 import _thread
 
@@ -26,7 +26,23 @@ CanRecvId = ''
 CanSendId = ''
 sendcnt = 0
 recvcnt = 0
+
+
+def play_video():
+    os.system("python3 cv_play_video.py")
+
+class PlayThread(QThread):
+    trigger = pyqtSignal()
+    def __int__(self):
+        super(PlayThread,self).__init__()
+
+    def run(self):
+        print ("play start")
+        play_video()
+        #self.trigger.emit()         #循环完毕后发出信号
+
 class TableSheet(QWidget):
+    playThread=PlayThread()
     def __init__(self):
         super().__init__()
         self.initUi()
@@ -91,7 +107,9 @@ class TableSheet(QWidget):
         mainLayout.addWidget(self.table)
         self.setLayout(mainLayout)
         #设置UI的距离和宽、高
-        self.setGeometry(300, 300, 740, 200)
+        #self.setGeometry(300, 300, 740, 200)
+        self.setGeometry(300, 300, 800, 250)
+        self.create_button()
         self.center()
 
     #控制窗口显示在屏幕中心的方法
@@ -121,6 +139,15 @@ class TableSheet(QWidget):
     def operate(self):
         self.update_send_buf()
         self.update_recv_buf()
+    def create_button(self):
+        self.closeButton = QPushButton(self)
+        self.closeButton.setText("play")          #text
+        #self.closeButton.setIcon(QIcon("close.png")) #icon
+        self.closeButton.setShortcut('Ctrl+D')  #shortcut key
+        #self.closeButton.clicked.connect(self.close)
+        self.closeButton.clicked.connect(self.playThread.start)
+        self.closeButton.setToolTip("play video") #Tool tip
+        self.closeButton.move(30,180)
 
 class Candata():
     def __init__(self):
@@ -155,9 +182,9 @@ class Candata():
         #print (" id = 0x%X" % ext_id)
         CanRecvId = ''
         if std_id != 0:
-            CanRecvId += ("0x%X" % (std_id))
-        else:
-            CanRecvId += ("0x%X" % (ext_id))
+            CanRecvId = ("0x%X" % (std_id))
+        if ext_id != 0:
+            CanRecvId = ("0x%X" % (ext_id))
         CanRecvStr = ''
         for i in range(len(data)):
             #print ("recv data = 0x%X" % ( data[i]))

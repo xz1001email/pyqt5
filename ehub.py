@@ -187,7 +187,7 @@ class EHub:
         offset += 4
 
         std_id, ext_id = struct.unpack("II", recvbit[offset : offset+8])
-        #print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
+        print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
         offset += 8
 
         IDE, RTR, DLC = struct.unpack("BBB", recvbit[offset : offset+3])
