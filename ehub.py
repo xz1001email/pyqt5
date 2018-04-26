@@ -56,7 +56,7 @@ class EHub:
 
     def unpack_usb_msg(self, msg):
         head = struct.unpack("BBH", msg)
-        print (head)
+        #print (head)
 
     BAUDRATE_NAMES = (
         "CAN_SPEED_INVALID",
@@ -176,6 +176,44 @@ class EHub:
 
         UsbDataLen = 64
         offset = 0
+        recvbuf = self.ehub_fd.read(UsbDataLen)
+        recvlen = len(recvbuf)
+        #print (recvlen)
+
+        cmd, idx, datalen = struct.unpack("BBH", recvbuf[0 : 4])
+        offset += 4
+        #print ("can data len = %d" % (datalen))
+        return datalen, recvbuf[4: 4+datalen]
+
+    def get_can_frame(self, recvbuf):
+        data = [1,2,3,4,5,6,7,8];
+        canid = 0
+        bitfiels = 0
+
+        offset = 0
+        std_id, ext_id = struct.unpack("II", recvbuf[offset : offset+8])
+        #print ("std_id = 0x%X, ext_id = 0x%X\n" % (std_id, ext_id))
+        offset += 8
+        IDE, RTR, DLC= struct.unpack("BBB", recvbuf[offset : offset+3])
+        #print ("IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC))
+        offset += 3
+
+        for i in range(8):
+            a=i+offset
+            b=i+offset+1
+            data[i] = struct.unpack("B", recvbuf[a:b])
+            #print (a, b, "0x%x" % data[i])
+
+        return std_id, ext_id, data
+
+    """
+    def recv_can_frame(self):
+        data = [1,2,3,4,5,6,7,8];
+        canid = 0
+        bitfiels = 0
+
+        UsbDataLen = 64
+        offset = 0
         recvbit = self.ehub_fd.read(UsbDataLen)
         recvlen = len(recvbit)
         #print (recvlen)
@@ -185,14 +223,14 @@ class EHub:
 
         cmd, idx, datalen = struct.unpack("BBH", recvbit[0 : 4])
         offset += 4
+        print ("can data len = %d" % (datalen))
 
         std_id, ext_id = struct.unpack("II", recvbit[offset : offset+8])
         print ("std_id = 0x%x, ext_id = 0x%x\n" % (std_id, ext_id))
         offset += 8
-
-        IDE, RTR, DLC = struct.unpack("BBB", recvbit[offset : offset+3])
+        IDE, RTR, DLC,remain= struct.unpack("BBBB", recvbit[offset : offset+4])
         #print ("IDE = 0x%x, RTR = 0x%x, DLC = 0x%x" % (IDE, RTR, DLC))
-        offset += 3
+        offset += 4
 
         for i in range(8):
             a=i+offset
@@ -201,7 +239,7 @@ class EHub:
             #print (a, b, "0x%x" % data[i])
 
         return std_id, ext_id, data
-
+    """
 
     def send_cmd_to_ehub(self, cmd):
         """

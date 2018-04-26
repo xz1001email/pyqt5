@@ -19,7 +19,8 @@ def video_screen_full():
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
 
 
-videopath='/home/xiao/FPGA/factory_test/fpga_factory_test/python/canreplayer/myplayvideo/rec_20180117_152908.mp4'
+#videopath='/home/xiao/FPGA/factory_test/fpga_factory_test/python/canreplayer/myplayvideo/rec_20180117_152908.mp4'
+videopath='/home/xiao/FPGA/factory_test/fpga_factory_test/python/canreplayer/HW.avi'
 
 def play_video():
     screen = screeninfo.get_monitors()[0]
