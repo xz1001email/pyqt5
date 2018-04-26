@@ -37,7 +37,7 @@ HW_str = ''
 
 
 VideoPlaying = 0
-VideoPlayStart = 0
+VideoPlayStart = 1
 FPGATestResult = 0
 
 def play_video():
@@ -108,7 +108,8 @@ class TableSheet(QWidget):
         self.table.setRowCount(8)
 
         self.table.setHorizontalHeaderLabels(horizontalHeader)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        #self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setEditTriggers(QTableWidget.CurrentChanged)
         #self.table.setSelectionBehavior(QTableWidget.SelectColumns)
         self.table.setSelectionBehavior(QTableWidget.SelectItems)
         self.table.setSelectionMode(QTableWidget.SingleSelection  )
@@ -137,6 +138,7 @@ class TableSheet(QWidget):
         self.PlayButton = self.create_button("播放", "play", 25, 400, self.pre_play_video)
         self.DisplayButton = self.create_button("暂停显示", "display", 600, 400, self.display_switch)
         self.TestButton = self.create_button("开始测试", "test", 300, 400, self.test_switch)
+        self.TestButton = self.create_button("输入序列号", "input", 250, 400, self.get_serialnum)
 
     def create_button(self, name, tips, x, y, func):
         Button = QPushButton(self)
@@ -189,6 +191,9 @@ class TableSheet(QWidget):
         #textFont = QFont("song", 18, QFont.Bold)
         textFont = QFont("song", 18)
         newItem.setFont(textFont)
+        #newItem.setFlags(newItem.flags() | Qt.ItemIsEditable)
+        #newItem.setFlags(newItem.flags() & ~Qt.ItemIsEditable)
+
         #newItem.setForeground(QBrush(Qt.green))
         #newItem.setBackground(QBrush(Qt.gray))
         #newItem.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -266,6 +271,20 @@ class TableSheet(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def get_serialnum(self):
+        #print (unicode(self.table.item(6,1)))
+        str1 = self.table.item(6,4).text()
+
+        #print(bytes(str1, encoding='gbk'))
+        #print(str(str1, encoding='utf-8'))
+        #print(str(str1, encoding='unicode'))
+        print(str1)
+
+
+        #print ((str)(str1))
+        #print (str1.back())
+        pass
+
     def test_switch(self):
         button_name = ('开始测试', '停止测试')
         self.test_flag ^= 1
@@ -274,6 +293,7 @@ class TableSheet(QWidget):
         if self.test_flag:
             self.workThread.timer_start()
             self.display_timer_start()
+            self.pre_play_video()
         else:
             self.workThread.timer_stop()
             self.display_timer_stop()
@@ -321,7 +341,7 @@ class TableSheet(QWidget):
             self.table.setItem(2+i, 4, QTableWidgetItem(CanRecvStr[i]))
     def update_warning(self):
         print ("update warning %d" % FPGATestResult)
-        self.auto_play_video()
+        #self.auto_play_video()
         self.SetWarnResult(self.Rline, 1, FCW_str)
         self.SetWarnResult(self.Rline, 3, HW_str)
 
@@ -341,7 +361,7 @@ class TableSheet(QWidget):
     def display_timer_start(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.operate)
-        self.timer.start(500)
+        self.timer.start(20)
     def display_timer_stop(self):
         self.operate()
         self.timer.stop()
@@ -442,9 +462,9 @@ class Candata():
             for i in range(len(data)):
                 CanRecvStr[index] += ("0x%02X, " % ( data[i]))
 
-        if recvcnt[0] > 5:
-            #VideoPlayStart = 1
-            pass
+        #if recvcnt[0] > 5:
+        #    #VideoPlayStart = 1
+        #    pass
 
 class WorkThread(QThread):
     trigger = pyqtSignal()
