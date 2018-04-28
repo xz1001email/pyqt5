@@ -16,8 +16,15 @@ from PyQt5.QtWidgets import QWidget, QApplication, QLabel,  QTableWidget,QHBoxLa
 from PyQt5.QtGui import QFont,QColor,QBrush,QPixmap
 from PyQt5.QtCore import QTimer
 
+
+from PyQt5.QtWidgets import (QWidget, QPushButton,
+    QHBoxLayout, QVBoxLayout, QApplication)
+
+
+
 #from cansend import Ectrl
 from ehub import EHub
+from cv_play_video import cv_video
 
 sendcnt = [0, 0]
 CanSendId = ["", ""]
@@ -38,7 +45,7 @@ HW_str = ''
 
 VideoPlaying = 0
 VideoPlayStart = 1
-FPGATestResult = 0
+FPGATestStatus = 0
 
 def play_video():
     os.system("python3 cv_play_video.py")
@@ -47,28 +54,32 @@ class PlayThread(QThread):
     trigger = pyqtSignal()
     def __init__(self):
         super(PlayThread,self).__init__()
+        #self.cv = cv_video()
 
     def run(self):
-        global FPGATestResult
         global VideoPlaying
         global VideoPlayStart
 
         print ("play start")
         VideoPlaying = 1
+        #self.cv.play_video()
         play_video()
         VideoPlaying = 0
         VideoPlayStart = 0
 
-        if FPGATestResult != 2:
-            FPGATestResult = 3
-        self.trigger.emit()         #循环完毕后发出信号
+        self.trigger.emit(force_stop = 1)         #循环完毕后发出信号
+
+    def stop_play_video(self):
+        os.system("sudo killall python3")
+
+
 
 class TableSheet(QWidget):
     def __init__(self):
         super().__init__()
 
         self.Rline = 7
-        self.CntLine = 6
+        self.CntLine = 8
         self.TestOKCnt = 0
         self.TestErrcnt = 0
         self.timer = None
@@ -77,13 +88,16 @@ class TableSheet(QWidget):
         self.PlayButton = None
         self.DisplayButton = None
         self.TestButton = None
+        self.SerialnumButton = None
+        self.serialnumEdit = None
+        self.SerialNumStr = ''
 
         self.workThread=WorkThread()
         #self.workThread.trigger.connect(table.update_recv_buf)
         #self.workThread.start()              #计时开始
 
         self.playThread=PlayThread()
-        self.playThread.trigger.connect(self.video_play_over)
+        self.playThread.trigger.connect(self.test_switch)
 
         self.create_table()
 
@@ -95,7 +109,7 @@ class TableSheet(QWidget):
         self.TableAddOneLine(3, "识别报文", "接收", "", "0", "")
         self.TableAddOneLine(4, "报警报文", "接收", "", "0", "")
         self.TableAddOneLine(5, "系统报文", "接收", "", "0", "")
-        self.TableSetOneLine(self.CntLine, "总计数", "", "未通过", "", "")
+        self.TableSetOneLine(self.CntLine, "通过", "", "未通过", "", "")
         self.TableAddResultLine(self.Rline, "", "")
         self.TableLayOut()
 
@@ -105,11 +119,11 @@ class TableSheet(QWidget):
         self.setWindowTitle('CAN 报文信息')
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setRowCount(8)
+        self.table.setRowCount(9)
 
         self.table.setHorizontalHeaderLabels(horizontalHeader)
         #self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setEditTriggers(QTableWidget.CurrentChanged)
+        #self.table.setEditTriggers(QTableWidget.CurrentChanged)
         #self.table.setSelectionBehavior(QTableWidget.SelectColumns)
         self.table.setSelectionBehavior(QTableWidget.SelectItems)
         self.table.setSelectionMode(QTableWidget.SingleSelection  )
@@ -125,20 +139,57 @@ class TableSheet(QWidget):
     def TableLayOut(self):
         row_count = self.table.rowCount()
         self.table.insertRow(row_count)
-        mainLayout = QHBoxLayout()
-        mainLayout.addWidget(self.table)
-        self.setLayout(mainLayout)
+
+        hbox = QHBoxLayout()
+        #hbox.addStretch(1)
+        hbox.addWidget(self.table)
+
+        vbox = QVBoxLayout()
+        #vbox.addStretch(1)
+        vbox.addLayout(hbox)
+
+        #self.setLayout(vbox)
+
+
         #设置UI的距离和宽、高
         #self.setGeometry(300, 300, 740, 200)
-        self.setGeometry(300, 300, 800, 450)
+        self.setGeometry(300, 300, 900, 600)
         self.button_init()
         self.center()
 
+        title = QLabel('Title')
+        number = QLabel('序列号')
+        review = QLabel('Review')
+
+        titleEdit = QLineEdit()
+        self.serialnumEdit = QLineEdit()
+        reviewEdit = QTextEdit()
+
+        grid = QGridLayout()
+        grid.setSpacing(10)
+
+        grid.addWidget(title, 1, 0)
+        grid.addWidget(titleEdit, 1, 1)
+
+        grid.addWidget(number, 2, 0)
+        grid.addWidget(self.serialnumEdit, 2, 1)
+        grid.addWidget(self.SerialnumButton, 2, 2)
+
+        #grid.addWidget(review, 3, 0)
+        #grid.addWidget(reviewEdit, 3, 1, 5, 1)
+
+        grid.addWidget(self.TestButton, 5, 7)
+        grid.addWidget(self.PlayButton, 6, 7)
+        grid.addWidget(self.DisplayButton, 7, 7)
+
+        grid.addWidget(self.table, 5, 1, 5, 6)
+        self.setLayout(grid)
+
     def button_init(self):
-        self.PlayButton = self.create_button("播放", "play", 25, 400, self.pre_play_video)
-        self.DisplayButton = self.create_button("暂停显示", "display", 600, 400, self.display_switch)
-        self.TestButton = self.create_button("开始测试", "test", 300, 400, self.test_switch)
-        self.TestButton = self.create_button("输入序列号", "input", 250, 400, self.get_serialnum)
+        self.PlayButton = self.create_button("播放", "play", 100, 400, self.pre_play_video)
+        self.TestButton = self.create_button("开始测试", "test", 250, 400, self.test_switch)
+        self.DisplayButton = self.create_button("暂停显示", "display", 400, 400, self.display_switch)
+        self.SerialnumButton= self.create_button("输入序列号", "input", 550, 400, self.get_serialnum)
 
     def create_button(self, name, tips, x, y, func):
         Button = QPushButton(self)
@@ -273,44 +324,66 @@ class TableSheet(QWidget):
 
     def get_serialnum(self):
         #print (unicode(self.table.item(6,1)))
-        str1 = self.table.item(6,4).text()
+        #str1 = self.table.item(6,4).text()
 
+        self.SerialNumStr = self.serialnumEdit.text()
         #print(bytes(str1, encoding='gbk'))
         #print(str(str1, encoding='utf-8'))
         #print(str(str1, encoding='unicode'))
-        print(str1)
+        print(self.SerialNumStr)
 
 
         #print ((str)(str1))
         #print (str1.back())
         pass
 
-    def test_switch(self):
+    def test_switch(self, force_stop = 0):
         button_name = ('开始测试', '停止测试')
-        self.test_flag ^= 1
-        self.TestButton.setText(button_name[self.test_flag])          #text
+        global FPGATestStatus
+
+        if force_stop:
+            print ("force stop" ,self.test_flag)
+            if self.test_flag == 0:
+                return
+            self.test_flag = 0
+            self.TestButton.setText(button_name[0])          #text
+        else:
+            self.test_flag ^= 1
+            self.TestButton.setText(button_name[self.test_flag])          #text
 
         if self.test_flag:
+            print ("start ...")
             self.workThread.timer_start()
             self.display_timer_start()
             self.pre_play_video()
         else:
+            self.playThread.stop_play_video()
+
+            if FPGATestStatus != 2:
+                FPGATestStatus = 3
+
+            #self.test_switch(force_stop = 1)
+
+            if FPGATestStatus == 2:
+                output = ("设备序列号:%s, %s\n" % (self.SerialNumStr, "测试通过"))
+                self.TestOKCnt += 1
+                self.SetResultDsip(self.CntLine, 1, str(self.TestOKCnt), Qt.black)
+            if FPGATestStatus == 3:
+                output = ("设备序列号:%s, %s\n" % (self.SerialNumStr, "测试未通过"))
+                self.TestErrcnt += 1
+                self.SetResultDsip(self.CntLine, 3, str(self.TestErrcnt), Qt.red)
+
+            with open('test.txt', mode='a+', encoding='utf-8') as f:
+                f.writelines(output)
+                f.flush()
+                f.seek(0)
+                print(f.readlines())
+
             self.workThread.timer_stop()
             self.display_timer_stop()
+            FPGATestStatus = 0
+            print ("flag", self.test_flag)
 
-    def video_play_over(self):
-        global FPGATestResult
-        self.test_switch()
-
-        #self.test_stop()
-        FPGATestResult = 0
-        print (FPGATestResult)
-
-    def test_stop(self):
-        button_name = ('开始测试', '停止测试')
-        self.workThread.timer_stop()
-        self.display_timer_stop()
-        self.TestButton.setText(button_name[0])          #text
 
     def display_switch(self):
         button_name = ('继续显示', '暂停显示')
@@ -323,9 +396,9 @@ class TableSheet(QWidget):
             self.pre_play_video()
 
     def pre_play_video(self):
-        global FPGATestResult
+        global FPGATestStatus
         if VideoPlaying == 0:
-            FPGATestResult = 1
+            FPGATestStatus = 1
             self.playThread.start()
         else:
             print ("video playing")
@@ -340,23 +413,19 @@ class TableSheet(QWidget):
             self.table.setItem(2+i, 3, QTableWidgetItem(str(recvcnt[i])))
             self.table.setItem(2+i, 4, QTableWidgetItem(CanRecvStr[i]))
     def update_warning(self):
-        print ("update warning %d" % FPGATestResult)
+        #print ("update warning %d" % FPGATestStatus)
         #self.auto_play_video()
-        self.SetWarnResult(self.Rline, 1, FCW_str)
-        self.SetWarnResult(self.Rline, 3, HW_str)
+        self.SetWarnResult(self.Rline, 3, FCW_str)
+        self.SetWarnResult(self.Rline, 1, HW_str)
 
-        if FPGATestResult == 0:
+        if FPGATestStatus == 0:
             self.SetResultWait(self.Rline, 4, "等待测试 ...")
-        elif FPGATestResult == 1:
+        elif FPGATestStatus == 1:
             self.SetResultWait(self.Rline, 4, "测试中 ...")
-        elif FPGATestResult == 2:
+        elif FPGATestStatus == 2:
             self.SetResultPass(self.Rline, 4)
-            self.TestOKCnt += 1
-            self.SetResultDsip(self.CntLine, 1, str(self.TestOKCnt), Qt.black)
-        elif FPGATestResult == 3:
+        elif FPGATestStatus == 3:
             self.SetResultFail(self.Rline, 4)
-            self.TestErrcnt += 1
-            self.SetResultDsip(self.CntLine, 3, str(self.TestErrcnt), Qt.red)
 
     def display_timer_start(self):
         self.timer = QTimer(self)
@@ -386,9 +455,10 @@ class Candata():
         #print ("send")
 
         CanID = [0x18FEF100, 0x0CFDCC27]
-        data = [[0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8], [0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8]]
+        data = [[0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8], [0x1, 0x0, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8]]
 
-        speed = 60*256
+        #speed = 60*256
+        speed = 200*256
         data[0][1] = speed & 0xFF
         data[0][2] = (speed >> 8) & 0xFF
 
@@ -407,7 +477,7 @@ class Candata():
         global recvcnt
         global CanRecvStr
         global CanRecvId
-        global HW_str, FCW_str, FPGATestResult
+        global HW_str, FCW_str, FPGATestStatus
         global VideoPlayStart
         index = 0
         #print ("recv")
@@ -443,7 +513,7 @@ class Candata():
                     print ("FCW...");
                     FCW_str = "告警"
                     if fcw_stat == 1:
-                        FPGATestResult = 2
+                        FPGATestStatus = 2
                 else:
                     FCW_str = ""
 
@@ -479,7 +549,7 @@ class WorkThread(QThread):
     def timer_start(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.operate)
-        self.timer.start(1000)
+        self.timer.start(30)
     def timer_stop(self):
         self.timer.stop()
 
@@ -492,6 +562,8 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     table = TableSheet()
 
+    #cv = cv_video()
+    #cv.play_video()
 
     table.show()
     sys.exit(app.exec_())
