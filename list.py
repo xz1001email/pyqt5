@@ -67,7 +67,7 @@ class PlayThread(QThread):
         VideoPlaying = 0
         VideoPlayStart = 0
 
-        self.trigger.emit(force_stop = 1)         #循环完毕后发出信号
+        self.trigger.emit()         #循环完毕后发出信号
 
     def stop_play_video(self):
         os.system("sudo killall python3")
@@ -97,7 +97,8 @@ class TableSheet(QWidget):
         #self.workThread.start()              #计时开始
 
         self.playThread=PlayThread()
-        self.playThread.trigger.connect(self.test_switch)
+        #self.playThread.trigger.connect(self.test_switch)
+        self.playThread.trigger.connect(lambda: self.test_switch(force_stop = 1))
 
         self.create_table()
 
