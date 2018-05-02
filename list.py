@@ -1,3 +1,7 @@
+#!/usr/bin/python
+
+
+
 #-*- coding:utf-8 -*-
 '''
 TableWidget
@@ -20,8 +24,6 @@ from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import (QWidget, QPushButton,
     QHBoxLayout, QVBoxLayout, QApplication)
 
-
-
 #from cansend import Ectrl
 from ehub import EHub
 from cv_play_video import cv_video
@@ -30,11 +32,7 @@ sendcnt = [0, 0]
 CanSendId = ["", ""]
 CanSendStr = ["", ""]
 
-
 #send_tuple = ("发送报文", "发送", ["", "", ""])
-
-
-
 
 recvcnt = [0,0,0,0]
 CanRecvId = ["", "", "", ""]
@@ -44,7 +42,6 @@ HW_str = ''
 
 
 VideoPlaying = 0
-VideoPlayStart = 1
 FPGATestStatus = 0
 
 def play_video():
@@ -58,21 +55,17 @@ class PlayThread(QThread):
 
     def run(self):
         global VideoPlaying
-        global VideoPlayStart
 
         print ("play start")
         VideoPlaying = 1
         #self.cv.play_video()
         play_video()
         VideoPlaying = 0
-        VideoPlayStart = 0
 
         self.trigger.emit()         #循环完毕后发出信号
 
     def stop_play_video(self):
         os.system("sudo killall python3")
-
-
 
 class TableSheet(QWidget):
     def __init__(self):
@@ -84,7 +77,7 @@ class TableSheet(QWidget):
         self.TestErrcnt = 0
         self.timer = None
         self.display_flag = 1
-        self.test_flag = 0
+        self.work_flag = 0
         self.PlayButton = None
         self.DisplayButton = None
         self.TestButton = None
@@ -97,8 +90,8 @@ class TableSheet(QWidget):
         #self.workThread.start()              #计时开始
 
         self.playThread=PlayThread()
-        #self.playThread.trigger.connect(self.test_switch)
-        self.playThread.trigger.connect(lambda: self.test_switch(force_stop = 1))
+        #self.playThread.trigger.connect(self.work_switch)
+        self.playThread.trigger.connect(lambda: self.work_switch(force_stop = 1))
 
         self.create_table()
 
@@ -151,7 +144,6 @@ class TableSheet(QWidget):
 
         #self.setLayout(vbox)
 
-
         #设置UI的距离和宽、高
         #self.setGeometry(300, 300, 740, 200)
         self.setGeometry(300, 300, 900, 600)
@@ -187,8 +179,8 @@ class TableSheet(QWidget):
         self.setLayout(grid)
 
     def button_init(self):
-        self.PlayButton = self.create_button("播放", "play", 100, 400, self.pre_play_video)
-        self.TestButton = self.create_button("开始测试", "test", 250, 400, self.test_switch)
+        self.PlayButton = self.create_button("播放", "play", 100, 400, self.try_play_video)
+        self.TestButton = self.create_button("开始测试", "test", 250, 400, self.work_switch)
         self.DisplayButton = self.create_button("暂停显示", "display", 400, 400, self.display_switch)
         self.SerialnumButton= self.create_button("输入序列号", "input", 550, 400, self.get_serialnum)
 
@@ -209,12 +201,9 @@ class TableSheet(QWidget):
         #textFont = QFont("song", 18, QFont.Bold)
         textFont = QFont("song", 18)
         newItem.setFont(textFont)
-
         return newItem
 
-
     def TableSetOneLine(self, line, str1, str2, str3, str4, str5):
-
         self.table.setColumnWidth(4,300)
         self.table.setRowHeight(line,40)
 
@@ -293,7 +282,6 @@ class TableSheet(QWidget):
         self.table.setItem(line, n, newItem)
 
     def TableAddOneLine(self, line, device, direction, canid, pkgcnt, buf):
-
         #设置列宽
         self.table.setColumnWidth(4,300)
         #设置行高
@@ -333,37 +321,34 @@ class TableSheet(QWidget):
         #print(str(str1, encoding='unicode'))
         print(self.SerialNumStr)
 
-
         #print ((str)(str1))
         #print (str1.back())
         pass
 
-    def test_switch(self, force_stop = 0):
+    def work_switch(self, force_stop = 0):
         button_name = ('开始测试', '停止测试')
         global FPGATestStatus
 
         if force_stop:
-            print ("force stop" ,self.test_flag)
-            if self.test_flag == 0:
+            print ("force stop" ,self.work_flag)
+            if self.work_flag == 0:
                 return
-            self.test_flag = 0
+            self.work_flag = 0
             self.TestButton.setText(button_name[0])          #text
         else:
-            self.test_flag ^= 1
-            self.TestButton.setText(button_name[self.test_flag])          #text
+            self.work_flag ^= 1
+            self.TestButton.setText(button_name[self.work_flag])          #text
 
-        if self.test_flag:
+        if self.work_flag:
             print ("start ...")
             self.workThread.timer_start()
             self.display_timer_start()
-            self.pre_play_video()
+            self.try_play_video()
         else:
             self.playThread.stop_play_video()
 
             if FPGATestStatus != 2:
                 FPGATestStatus = 3
-
-            #self.test_switch(force_stop = 1)
 
             if FPGATestStatus == 2:
                 output = ("设备序列号:%s, %s\n" % (self.SerialNumStr, "测试通过"))
@@ -383,8 +368,7 @@ class TableSheet(QWidget):
             self.workThread.timer_stop()
             self.display_timer_stop()
             FPGATestStatus = 0
-            print ("flag", self.test_flag)
-
+            print ("flag", self.work_flag)
 
     def display_switch(self):
         button_name = ('继续显示', '暂停显示')
@@ -392,17 +376,14 @@ class TableSheet(QWidget):
         self.display_flag ^= 1
         self.DisplayButton.setText(button_name[self.display_flag])          #text
 
-    def auto_play_video(self):
-        if VideoPlayStart == 1:
-            self.pre_play_video()
-
-    def pre_play_video(self):
+    def try_play_video(self):
         global FPGATestStatus
         if VideoPlaying == 0:
             FPGATestStatus = 1
             self.playThread.start()
         else:
             print ("video playing")
+
     def update_send_buf(self):
         for i in range(len(sendcnt)):
             self.table.setItem(0+i, 2, QTableWidgetItem(CanSendId[i]))
@@ -415,7 +396,6 @@ class TableSheet(QWidget):
             self.table.setItem(2+i, 4, QTableWidgetItem(CanRecvStr[i]))
     def update_warning(self):
         #print ("update warning %d" % FPGATestStatus)
-        #self.auto_play_video()
         self.SetWarnResult(self.Rline, 3, FCW_str)
         self.SetWarnResult(self.Rline, 1, HW_str)
 
@@ -479,14 +459,13 @@ class Candata():
         global CanRecvStr
         global CanRecvId
         global HW_str, FCW_str, FPGATestStatus
-        global VideoPlayStart
         index = 0
         #print ("recv")
         datalen, recvbuf = self.ehub.recv_can_frame()
         #std_id, ext_id, data = self.ehub.recv_can_frame()
         #print (" id = 0x%X" % ext_id)
 
-        print ("recv can data len = %d" % (datalen))
+        #print ("recv can data len = %d" % (datalen))
         pkgcnt = datalen//20
         step = 0;
         for j in range(pkgcnt):
@@ -533,9 +512,6 @@ class Candata():
             for i in range(len(data)):
                 CanRecvStr[index] += ("0x%02X, " % ( data[i]))
 
-        #if recvcnt[0] > 5:
-        #    #VideoPlayStart = 1
-        #    pass
 
 class WorkThread(QThread):
     trigger = pyqtSignal()
