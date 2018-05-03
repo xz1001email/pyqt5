@@ -363,7 +363,7 @@ class TableSheet(QWidget):
                 f.writelines(output)
                 f.flush()
                 f.seek(0)
-                print(f.readlines())
+                #print(f.readlines())
 
             self.workThread.timer_stop()
             self.display_timer_stop()
@@ -428,6 +428,7 @@ class Candata():
     def __init__(self):
         self.ehub = EHub()
         print ("candata enter")
+        self.sendindex = 1
 
     def send_can_msg(self):
         global sendcnt
@@ -446,13 +447,16 @@ class Candata():
         data[1][6] &= ~0x04 #left disable
         data[1][6] &= ~0x08 #right diable
 
-        for index in range(2):
-            CanSendId[index] = ("0x%X" % (CanID[index]))
-            CanSendStr[index] = ''
-            for i in range(len(data[index])):
-                CanSendStr[index] += ("0x%02X, " % ( data[index][i]))
-            self.ehub.send_can_frame(CanID[index], data[index])
-            sendcnt[index] += 1
+        self.sendindex ^= 1
+        index = self.sendindex
+        CanSendId[index] = ("0x%X" % (CanID[index]))
+        CanSendStr[index] = ''
+        for i in range(len(data[index])):
+            CanSendStr[index] += ("0x%02X, " % ( data[index][i]))
+        self.ehub.send_can_frame(CanID[index], data[index])
+        #print (data[index])
+        #print("index %d" %(index));
+        sendcnt[index] += 1
 
     def recv_can_msg(self):
         global recvcnt
@@ -465,7 +469,7 @@ class Candata():
         #std_id, ext_id, data = self.ehub.recv_can_frame()
         #print (" id = 0x%X" % ext_id)
 
-        #print ("recv can data len = %d" % (datalen))
+        print ("recv can data len = %d" % (datalen))
         pkgcnt = datalen//20
         step = 0;
         for j in range(pkgcnt):
@@ -526,7 +530,8 @@ class WorkThread(QThread):
     def timer_start(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.operate)
-        self.timer.start(30)
+        self.timer.start(15)
+        #self.timer.start(1000)
     def timer_stop(self):
         self.timer.stop()
 

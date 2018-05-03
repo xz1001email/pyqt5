@@ -18,3 +18,6 @@
 
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 100
 sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 50
+
+
+#sudo update-alternatives --config python
