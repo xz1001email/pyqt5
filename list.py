@@ -65,7 +65,7 @@ class PlayThread(QThread):
         self.trigger.emit()         #循环完毕后发出信号
 
     def stop_play_video(self):
-        os.system("sudo killall python3")
+        os.system("killall python3")
 
 class TableSheet(QWidget):
     def __init__(self):
