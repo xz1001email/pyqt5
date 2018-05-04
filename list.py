@@ -71,8 +71,12 @@ class TableSheet(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.Rline = 7
-        self.CntLine = 8
+        #self.Rline = 7
+        #self.CntLine = 8
+        self.Rline = 0
+        self.CntLine = 1
+        self.LineStart = 2
+
         self.TestOKCnt = 0
         self.TestErrcnt = 0
         self.timer = None
@@ -97,12 +101,12 @@ class TableSheet(QWidget):
 
     def create_table(self):
         self.CreateTableHeader()
-        self.TableAddOneLine(0, "车速报文", "发送", "", "0", "")
-        self.TableAddOneLine(1, "控制报文", "发送", "", "0", "")
-        self.TableAddOneLine(2, "识别报文", "接收", "", "0", "")
-        self.TableAddOneLine(3, "识别报文", "接收", "", "0", "")
-        self.TableAddOneLine(4, "报警报文", "接收", "", "0", "")
-        self.TableAddOneLine(5, "系统报文", "接收", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 0, "车速报文", "发送", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 1, "控制报文", "发送", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 2, "识别报文", "接收", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 3, "识别报文", "接收", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 4, "报警报文", "接收", "", "0", "")
+        self.TableAddOneLine(self.LineStart + 5, "系统报文", "接收", "", "0", "")
         self.TableSetOneLine(self.CntLine, "通过", "", "未通过", "", "")
         self.TableAddResultLine(self.Rline, "", "")
         self.TableLayOut()
@@ -114,6 +118,7 @@ class TableSheet(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setRowCount(9)
+        #self.table.setRowCount(3)
 
         self.table.setHorizontalHeaderLabels(horizontalHeader)
         #self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -386,14 +391,14 @@ class TableSheet(QWidget):
 
     def update_send_buf(self):
         for i in range(len(sendcnt)):
-            self.table.setItem(0+i, 2, QTableWidgetItem(CanSendId[i]))
-            self.table.setItem(0+i, 3, QTableWidgetItem(str(sendcnt[i])))
-            self.table.setItem(0+i, 4, QTableWidgetItem(CanSendStr[i]))
+            self.table.setItem(self.LineStart + 0+i, 2, QTableWidgetItem(CanSendId[i]))
+            self.table.setItem(self.LineStart + 0+i, 3, QTableWidgetItem(str(sendcnt[i])))
+            self.table.setItem(self.LineStart + 0+i, 4, QTableWidgetItem(CanSendStr[i]))
     def update_recv_buf(self):
         for i in range(len(recvcnt)):
-            self.table.setItem(2+i, 2, QTableWidgetItem(CanRecvId[i]))
-            self.table.setItem(2+i, 3, QTableWidgetItem(str(recvcnt[i])))
-            self.table.setItem(2+i, 4, QTableWidgetItem(CanRecvStr[i]))
+            self.table.setItem(self.LineStart + 2+i, 2, QTableWidgetItem(CanRecvId[i]))
+            self.table.setItem(self.LineStart + 2+i, 3, QTableWidgetItem(str(recvcnt[i])))
+            self.table.setItem(self.LineStart + 2+i, 4, QTableWidgetItem(CanRecvStr[i]))
     def update_warning(self):
         #print ("update warning %d" % FPGATestStatus)
         self.SetWarnResult(self.Rline, 3, FCW_str)
@@ -469,7 +474,7 @@ class Candata():
         #std_id, ext_id, data = self.ehub.recv_can_frame()
         #print (" id = 0x%X" % ext_id)
 
-        print ("recv can data len = %d" % (datalen))
+        #print ("recv can data len = %d" % (datalen))
         pkgcnt = datalen//20
         step = 0;
         for j in range(pkgcnt):
